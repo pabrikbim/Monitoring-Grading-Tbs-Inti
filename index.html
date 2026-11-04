@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Grading TBS Inti - PT BIM-PPS</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        palm: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            dark: '#0f291e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- SheetJS CDN (XLSX Parsing) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        <!-- Sidebar Filter & Controls -->
+        <aside class="w-full lg:w-80 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-5 flex flex-col justify-between shrink-0 shadow-sm">
+            <div class="space-y-6">
+                <!-- Brand Header -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-palm-700 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-palm-700/30">
+                            <i data-lucide="sprout" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">PT BIM-PPS</h1>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Grading TBS Inti Dashboard</p>
+                        </div>
+                    </div>
+                    <button id="themeToggle" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
+                        <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    </button>
+                </div>
+
+                <hr class="border-slate-200 dark:border-slate-700">
+
+                <!-- File Upload Box -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Upload Data Excel (.xlsx/.csv)
+                    </label>
+                    <div class="relative border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-palm-500 dark:hover:border-palm-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/50 dark:bg-slate-800/50 group" id="dropZone">
+                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                        <div class="flex flex-col items-center space-y-2 pointer-events-none">
+                            <div class="p-3 bg-white dark:bg-slate-700 rounded-full shadow-sm group-hover:scale-110 transition text-palm-600 dark:text-palm-400">
+                                <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                            </div>
+                            <span id="fileNameDisplay" class="text-xs font-medium text-slate-600 dark:text-slate-300 truncate max-w-[200px]">
+                                Upload file baru atau pakai sampel Okt 2026
+                            </span>
+                            <span class="text-[10px] text-slate-400">Format: XLSX, XLS, CSV</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="space-y-4">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Filter Data</h2>
+
+                    <!-- Date Range Filter -->
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Periode Tanggal</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="startDate" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                            <input type="date" id="endDate" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Afdeling / Blok Filter -->
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Afdeling / Kebun</label>
+                        <select id="filterAfd" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                            <option value="ALL">Semua Afdeling (BIM & PPS)</option>
+                        </select>
+                    </div>
+
+                    <!-- No Pol / Unit Filter -->
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">No Polisi / Unit Truk</label>
+                        <select id="filterUnit" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                            <option value="ALL">Semua No Pol / Unit</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Actions -->
+                    <div class="pt-2 flex gap-2">
+                        <button id="btnResetFilter" class="w-full text-xs py-2.5 px-4 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Meta -->
+            <div class="pt-6 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-400 text-center">
+                PT BIM-PPS Mill & Estate Analytics &copy; 2026
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 lg:p-8 space-y-6 overflow-x-hidden">
+            <!-- Header Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        Ringkasan Grading TBS Inti
+                        <span id="activePeriodeBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-palm-100 text-palm-800 dark:bg-palm-900/50 dark:text-palm-300 font-medium">Oktober 2026</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Monitoring kualitas dan tonase TBS penerimaan Pabrik Kelapa Sawit (PKS)</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnExportExcel" class="px-3.5 py-2 text-xs font-semibold text-white bg-palm-700 hover:bg-palm-800 rounded-lg transition shadow-md shadow-palm-700/20 flex items-center gap-1.5">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Excel
+                    </button>
+                    <button id="btnExportCSV" class="px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 rounded-lg transition flex items-center gap-1.5">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Cards Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                <!-- Card 1: Total Tonase -->
+                <div class="glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Total Tonase</span>
+                        <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                            <i data-lucide="scale" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div id="kpiTonase" class="text-xl font-bold text-slate-900 dark:text-white">0 Ton</div>
+                    <div id="kpiTonaseKg" class="text-[11px] text-slate-500 mt-1">0 Kg</div>
+                </div>
+
+                <!-- Card 2: Total Janjang -->
+                <div class="glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Total Janjang</span>
+                        <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div id="kpiJanjang" class="text-xl font-bold text-slate-900 dark:text-white">0 JJG</div>
+                    <div id="kpiJanjangDetail" class="text-[11px] text-slate-500 mt-1">Man: 0 | KAB: 0</div>
+                </div>
+
+                <!-- Card 3: % Buah Masak -->
+                <div class="glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">% Buah Masak</span>
+                        <div class="p-2 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400">
+                            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div id="kpiMasakPct" class="text-xl font-bold text-slate-900 dark:text-white">0%</div>
+                    <div id="kpiMasakJjg" class="text-[11px] text-slate-500 mt-1">0 JJG Masak</div>
+                </div>
+
+                <!-- Card 4: Total Brondolan -->
+                <div class="glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Brondolan</span>
+                        <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                            <i data-lucide="circle-dot" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div id="kpiBrondolan" class="text-xl font-bold text-slate-900 dark:text-white">0 Kg</div>
+                    <div id="kpiBrondolanPct" class="text-[11px] text-slate-500 mt-1">0% dari Tonase</div>
+                </div>
+
+                <!-- Card 5: Sampah & Kotoran -->
+                <div class="glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Sampah</span>
+                        <div class="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div id="kpiSampah" class="text-xl font-bold text-slate-900 dark:text-white">0 Kg</div>
+                    <div id="kpiSampahPct" class="text-[11px] text-slate-500 mt-1">0% toleransi</div>
+                </div>
+
+                <!-- Card 6: Rata-Rata BJR -->
+                <div class="glass p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Rata-Rata BJR</span>
+                        <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                            <i data-lucide="calculator" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div id="kpiBJR" class="text-xl font-bold text-slate-900 dark:text-white">0.00 Kg/JJG</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Berat Janjang Rata2</div>
+                </div>
+            </div>
+
+            <!-- Visual Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Trend Chart (2 Cols) -->
+                <div class="lg:col-span-2 glass p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-palm-600"></i> Tren Tonase & Janjang Harian
+                        </h3>
+                    </div>
+                    <div class="h-72">
+                        <canvas id="chartTrend"></canvas>
+                    </div>
+                </div>
+
+                <!-- Pie Chart Proporsi Afdeling -->
+                <div class="glass p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-4 h-4 text-palm-600"></i> Proporsi Tonase Afdeling
+                        </h3>
+                    </div>
+                    <div class="h-72 relative flex items-center justify-center">
+                        <canvas id="chartProporsi"></canvas>
+                    </div>
+                </div>
+
+                <!-- Quality Bar Chart per Afdeling -->
+                <div class="lg:col-span-2 glass p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-palm-600"></i> Distribusi Kualitas TBS per Afdeling (Buah Masak vs Mentah vs Sampah)
+                        </h3>
+                    </div>
+                    <div class="h-72">
+                        <canvas id="chartKualitas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Transport Performers -->
+                <div class="glass p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="truck" class="w-4 h-4 text-palm-600"></i> Top Unit Transport (Tonase)
+                        </h3>
+                    </div>
+                    <div class="h-72">
+                        <canvas id="chartTransport"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Data Table Section -->
+            <div class="glass rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="table" class="w-4 h-4 text-palm-600"></i> Detail Raw Data Grading TBS
+                        </h3>
+                        <p class="text-xs text-slate-500">Menampilkan rincian transaksi pengiriman dan pengujian penerimaan</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchInput" placeholder="Cari Chit, No Pol, Blok..." class="pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-palm-500 outline-none w-64">
+                        </div>
+                        <select id="pageSize" class="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                            <option value="10">10 baris</option>
+                            <option value="25" selected>25 baris</option>
+                            <option value="50">50 baris</option>
+                            <option value="100">100 baris</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100/70 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('chit')">No. Chit <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('tanggal')">Tanggal <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('nopol')">No Pol / Unit <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('afd')">Afdeling <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('tonase')">Tonase (Kg) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('jjgMan')">JJG Manual <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('jjgKab')">JJG KAB <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('buahMasak')">Buah Masak <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('brondolan')">Brondolan (Kg) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('sampah')">Sampah (Kg) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right">BJR (Kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-200 dark:divide-slate-700/60 text-slate-700 dark:text-slate-300">
+                            <!-- Rows injected dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table Footer & Pagination -->
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                    <div id="tableInfo">Menampilkan 0 dari 0 data</div>
+                    <div class="flex items-center gap-2">
+                        <button id="btnPrevPage" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50">Sebelumnya</button>
+                        <span id="pageIndicator" class="font-medium text-slate-700 dark:text-slate-300">Halaman 1</span>
+                        <button id="btnNextPage" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50">Selanjutnya</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Sample Default Data (Oktober 2026 PT BIM-PPS)
+        const sampleRawData = [
+            { chit: "CHT-1001", tanggal: "2026-10-01", nopol: "KT 8492 BC", afd: "BIM - AFD 1", tonase: 8450, jjgMan: 520, jjgKab: 515, buahMasak: 490, buahMentah: 25, brondolan: 420, sampah: 45 },
+            { chit: "CHT-1002", tanggal: "2026-10-01", nopol: "KT 8120 AB", afd: "BIM - AFD 2", tonase: 9200, jjgMan: 580, jjgKab: 580, buahMasak: 550, buahMentah: 30, brondolan: 510, sampah: 60 },
+            { chit: "CHT-1003", tanggal: "2026-10-02", nopol: "DA 9102 CD", afd: "PPS - AFD A", tonase: 7800, jjgMan: 460, jjgKab: 455, buahMasak: 440, buahMentah: 20, brondolan: 390, sampah: 30 },
+            { chit: "CHT-1004", tanggal: "2026-10-02", nopol: "KT 8492 BC", afd: "BIM - AFD 3", tonase: 10400, jjgMan: 640, jjgKab: 645, buahMasak: 610, buahMentah: 30, brondolan: 620, sampah: 70 },
+            { chit: "CHT-1005", tanggal: "2026-10-03", nopol: "KH 8221 FF", afd: "PPS - AFD B", tonase: 8900, jjgMan: 530, jjgKab: 530, buahMasak: 500, buahMentah: 30, brondolan: 450, sampah: 50 },
+            { chit: "CHT-1006", tanggal: "2026-10-04", nopol: "KT 8120 AB", afd: "BIM - AFD 1", tonase: 11200, jjgMan: 700, jjgKab: 690, buahMasak: 670, buahMentah: 30, brondolan: 700, sampah: 80 },
+            { chit: "CHT-1007", tanggal: "2026-10-05", nopol: "DA 9102 CD", afd: "PPS - AFD A", tonase: 8100, jjgMan: 490, jjgKab: 490, buahMasak: 470, buahMentah: 20, brondolan: 400, sampah: 40 },
+            { chit: "CHT-1008", tanggal: "2026-10-06", nopol: "KT 8990 GH", afd: "BIM - AFD 2", tonase: 9600, jjgMan: 600, jjgKab: 600, buahMasak: 575, buahMentah: 25, brondolan: 480, sampah: 55 },
+            { chit: "CHT-1009", tanggal: "2026-10-07", nopol: "KH 8221 FF", afd: "PPS - AFD C", tonase: 7500, jjgMan: 450, jjgKab: 440, buahMasak: 420, buahMentah: 30, brondolan: 350, sampah: 40 },
+            { chit: "CHT-1010", tanggal: "2026-10-08", nopol: "KT 8492 BC", afd: "BIM - AFD 3", tonase: 10100, jjgMan: 620, jjgKab: 625, buahMasak: 590, buahMentah: 30, brondolan: 580, sampah: 65 },
+            { chit: "CHT-1011", tanggal: "2026-10-10", nopol: "KT 8120 AB", afd: "BIM - AFD 1", tonase: 8800, jjgMan: 540, jjgKab: 540, buahMasak: 515, buahMentah: 25, brondolan: 430, sampah: 45 },
+            { chit: "CHT-1012", tanggal: "2026-10-12", nopol: "DA 9102 CD", afd: "PPS - AFD B", tonase: 9400, jjgMan: 570, jjgKab: 570, buahMasak: 540, buahMentah: 30, brondolan: 490, sampah: 50 },
+            { chit: "CHT-1013", tanggal: "2026-10-15", nopol: "KT 8990 GH", afd: "BIM - AFD 2", tonase: 10800, jjgMan: 660, jjgKab: 655, buahMasak: 630, buahMentah: 30, brondolan: 600, sampah: 70 },
+            { chit: "CHT-1014", tanggal: "2026-10-18", nopol: "KH 8221 FF", afd: "PPS - AFD A", tonase: 8300, jjgMan: 500, jjgKab: 505, buahMasak: 480, buahMentah: 20, brondolan: 410, sampah: 35 },
+            { chit: "CHT-1015", tanggal: "2026-10-20", nopol: "KT 8492 BC", afd: "BIM - AFD 3", tonase: 9900, jjgMan: 610, jjgKab: 610, buahMasak: 580, buahMentah: 30, brondolan: 530, sampah: 60 },
+            { chit: "CHT-1016", tanggal: "2026-10-22", nopol: "KT 8120 AB", afd: "BIM - AFD 1", tonase: 11500, jjgMan: 710, jjgKab: 715, buahMasak: 680, buahMentah: 30, brondolan: 720, sampah: 85 },
+            { chit: "CHT-1017", tanggal: "2026-10-25", nopol: "DA 9102 CD", afd: "PPS - AFD C", tonase: 7900, jjgMan: 480, jjgKab: 475, buahMasak: 450, buahMentah: 30, brondolan: 380, sampah: 40 },
+            { chit: "CHT-1018", tanggal: "2026-10-28", nopol: "KT 8990 GH", afd: "BIM - AFD 2", tonase: 10200, jjgMan: 630, jjgKab: 630, buahMasak: 600, buahMentah: 30, brondolan: 550, sampah: 60 },
+            { chit: "CHT-1019", tanggal: "2026-10-30", nopol: "KH 8221 FF", afd: "PPS - AFD B", tonase: 8600, jjgMan: 520, jjgKab: 520, buahMasak: 495, buahMentah: 25, brondolan: 440, sampah: 45 },
+            { chit: "CHT-1020", tanggal: "2026-10-31", nopol: "KT 8492 BC", afd: "BIM - AFD 1", tonase: 9100, jjgMan: 560, jjgKab: 555, buahMasak: 530, buahMentah: 30, brondolan: 470, sampah: 50 }
+        ];
+
+        // Application State
+        let rawData = [...sampleRawData];
+        let filteredData = [...sampleRawData];
+        let currentPage = 1;
+        let pageSize = 25;
+        let sortColumn = 'tanggal';
+        let sortAsc = true;
+
+        // Chart Instances
+        let chartTrendInstance = null;
+        let chartProporsiInstance = null;
+        let chartKualitasInstance = null;
+        let chartTransportInstance = null;
+
+        // Init on DOM Content Loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupThemeToggle();
+            setupFileUpload();
+            setupFilters();
+            setupTableControls();
+            
+            // Populate select options
+            populateDropdownFilters();
+
+            // Initial render
+            applyFilters();
+        });
+
+        // Theme Switcher (Dark / Light)
+        function setupThemeToggle() {
+            const btn = document.getElementById('themeToggle');
+            btn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                setTimeout(updateChartsTheme, 100);
+            });
+        }
+
+        // Dropdown options populator
+        function populateDropdownFilters() {
+            const afdSet = new Set(rawData.map(item => item.afd));
+            const unitSet = new Set(rawData.map(item => item.nopol));
+
+            const afdSelect = document.getElementById('filterAfd');
+            const unitSelect = document.getElementById('filterUnit');
+
+            afdSelect.innerHTML = '<option value="ALL">Semua Afdeling (BIM & PPS)</option>';
+            unitSelect.innerHTML = '<option value="ALL">Semua No Pol / Unit</option>';
+
+            afdSet.forEach(afd => {
+                const opt = document.createElement('option');
+                opt.value = afd;
+                opt.textContent = afd;
+                afdSelect.appendChild(opt);
+            });
+
+            unitSet.forEach(unit => {
+                const opt = document.createElement('option');
+                opt.value = unit;
+                opt.textContent = unit;
+                unitSelect.appendChild(opt);
+            });
+        }
+
+        // File Upload Handler (XLSX / CSV)
+        function setupFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const dropZone = document.getElementById('dropZone');
+            const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-palm-500', 'bg-palm-50/50');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-palm-500', 'bg-palm-50/50');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-palm-500', 'bg-palm-50/50');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+
+            function handleFileSelect(file) {
+                fileNameDisplay.textContent = file.name;
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+                        if (jsonData.length > 0) {
+                            parseExcelData(jsonData);
+                        } else {
+                            alert('File kosong atau format tidak sesuai.');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('Gagal membaca file Excel/CSV. Pastikan format file valid.');
+                    }
+                };
+
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        // Map sheet headers to internal fields flexible check
+        function parseExcelData(jsonRows) {
+            if (!jsonRows || jsonRows.length === 0) return;
+
+            // 1. Cari baris header yang mengandung kata kunci utama ('chit', 'tanggal', 'tonase', 'nopol', 'afd')
+            let headerRowIndex = -1;
+            for (let i = 0; i < Math.min(jsonRows.length, 10); i++) {
+                const rowValues = Object.values(jsonRows[i]).map(v => String(v).toLowerCase());
+                const hasKeyColumn = rowValues.some(val => 
+                    val.includes('chit') || val.includes('tanggal') || val.includes('tonase') || val.includes('afd')
+                );
+                if (hasKeyColumn) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+
+            let rowsToProcess = [];
+            
+            if (headerRowIndex !== -1) {
+                // Header ditemukan di baris data (karena sheet_to_json menggunakan baris 1 secara default)
+                const headerMap = jsonRows[headerRowIndex];
+                
+                // Ambil data setelah baris header
+                for (let i = headerRowIndex + 1; i < jsonRows.length; i++) {
+                    const rawRow = jsonRows[i];
+                    const mappedRow = {};
+                    
+                    // Petakan nilai berdasarkan nama header dari headerMap
+                    Object.keys(rawRow).forEach(colKey => {
+                        const headerName = headerMap[colKey];
+                        if (headerName) {
+                            mappedRow[headerName] = rawRow[colKey];
+                        }
+                    });
+                    rowsToProcess.push(mappedRow);
+                }
+            } else {
+                // Jika sheet_to_json sudah langsung mendeteksi header dengan benar
+                rowsToProcess = jsonRows;
+            }
+
+            // Helper untuk membersihkan string dan mencari nilai kolom berdasarkan variasi nama
+            const findValue = (row, keywords) => {
+                const keys = Object.keys(row);
+                for (let kw of keywords) {
+                    const targetKw = kw.toLowerCase().replace(/\s+/g, '');
+                    for (let k of keys) {
+                        const cleanKey = String(k).toLowerCase().replace(/\s+/g, '');
+                        if (cleanKey.includes(targetKw)) {
+                            return row[k];
+                        }
+                    }
+                }
+                return null;
+            };
+
+            const parsed = [];
+            rowsToProcess.forEach((row, idx) => {
+                // Ambil nilai Chit & Tanggal
+                let chitVal = findValue(row, ['chit', 'nosurat', 'spb', 'ticket']);
+                let tanggalVal = findValue(row, ['tanggal', 'tgl', 'date']);
+
+                // Abaikan baris total / footer / kosong
+                if (!chitVal && !tanggalVal) return;
+                if (String(chitVal).toLowerCase().includes('total') || String(tanggalVal).toLowerCase().includes('total')) return;
+
+                // Format Tanggal
+                let formattedDate = '2026-10-01';
+                if (tanggalVal) {
+                    if (tanggalVal instanceof Date) {
+                        formattedDate = tanggalVal.toISOString().split('T')[0];
+                    } else if (typeof tanggalVal === 'number') {
+                        // Handle Excel date serial number
+                        const dateObj = XLSX.SSF.parse_date_code(tanggalVal);
+                        if (dateObj) {
+                            const y = dateObj.y;
+                            const m = String(dateObj.m).padStart(2, '0');
+                            const d = String(dateObj.d).padStart(2, '0');
+                            formattedDate = `${y}-${m}-${d}`;
+                        }
+                    } else {
+                        const strDate = String(tanggalVal).trim();
+                        // Jika format dd/mm/yyyy atau yyyy-mm-dd
+                        if (strDate.includes('/')) {
+                            const parts = strDate.split('/');
+                            if (parts.length === 3) {
+                                if (parts[2].length === 4) {
+                                    formattedDate = `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+                                }
+                            }
+                        } else if (strDate.length >= 10) {
+                            formattedDate = strDate.substring(0, 10);
+                        }
+                    }
+                }
+
+                // Extrak angka dengan aman
+                const parseNum = (val) => {
+                    if (val === null || val === undefined || val === '') return 0;
+                    if (typeof val === 'number') return val;
+                    const cleaned = String(val).replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+                    return parseFloat(cleaned) || 0;
+                };
+
+                const item = {
+                    chit: String(chitVal || `CHT-${1000 + idx}`).trim(),
+                    tanggal: formattedDate,
+                    nopol: String(findValue(row, ['nopol/unit', 'nopol', 'unit', 'plat', 'truck']) || 'UNKNOWN').trim(),
+                    afd: String(findValue(row, ['afd/blok', 'afd', 'afdeling', 'blok', 'est']) || 'LAINNYA').trim(),
+                    tonase: parseNum(findValue(row, ['tonase', 'berat', 'netto'])),
+                    jjgMan: parseNum(findValue(row, ['jjgmanual', 'jjgman', 'janjangmanual'])),
+                    jjgKab: parseNum(findValue(row, ['jjgkab', 'kab', 'kerani'])),
+                    buahMasak: parseNum(findValue(row, ['bmasakjjg', 'masakjjg', 'masak'])),
+                    buahMentah: parseNum(findValue(row, ['bmentahjjg', 'mentahjjg', 'mentah'])),
+                    brondolan: parseNum(findValue(row, ['totalbrondolan', 'brondolankg', 'brondolan'])),
+                    sampah: parseNum(findValue(row, ['sampahkg', 'sampah']))
+                };
+
+                parsed.push(item);
+            });
+
+            if (parsed.length > 0) {
+                rawData = parsed;
+                populateDropdownFilters();
+                applyFilters();
+                document.getElementById('activePeriodeBadge').textContent = 'File Excel Berhasil Dimuat';
+            } else {
+                alert('Tidak dapat memproses baris data Excel. Pastikan format kolom sesuai.');
+            }
+        }
+
+        // Setup Event Listeners for Filters
+<!-- ... existing code -->
