@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Grading TBS Inti PT.BIM-PPS</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        palm: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            dark: '#0f291e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- SheetJS CDN (XLSX Parsing) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+        /* ===== Tabel data: tinggi 10 baris, scroll vertikal (kanan) + horizontal (bawah) ===== */
+        .tbl-scroll { max-height: 412px; overflow: auto; }
+        .tbl-scroll thead th { position: sticky; top: 0; z-index: 2; background: #f1f5f9; }
+        .dark .tbl-scroll thead th { background: #1e293b; }
+        .tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+        .tbl-scroll::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.18); }
+        .tbl-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+        .tbl-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; background-clip: padding-box; }
+        .dark .tbl-scroll::-webkit-scrollbar-thumb { background: #475569; background-clip: padding-box; }
+        @supports not selector(::-webkit-scrollbar) { .tbl-scroll { scrollbar-color: #94a3b8 transparent; } }
+
+        /* ===== Kartu KPI bergaya 3D ===== */
+        .kpi-grid { perspective: 1000px; }
+        .kpi-grid > .glass {
+            position: relative;
+            transform-style: preserve-3d;
+            background: linear-gradient(145deg, #ffffff 0%, #e8eef5 100%);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 1),
+                inset 0 -4px 0 rgba(15, 23, 42, 0.07),
+                0 2px 4px rgba(15, 23, 42, 0.08),
+                6px 10px 18px rgba(15, 23, 42, 0.14);
+            transition: transform .25s ease, box-shadow .25s ease;
+        }
+        /* kilap di bagian atas kartu */
+        .kpi-grid > .glass::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 45%);
+            pointer-events: none;
+        }
+        .kpi-grid > .glass:hover {
+            transform: translateY(-6px) rotateX(5deg) rotateY(-4deg);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 1),
+                inset 0 -4px 0 rgba(15, 23, 42, 0.07),
+                0 4px 8px rgba(15, 23, 42, 0.1),
+                12px 20px 28px rgba(15, 23, 42, 0.2);
+        }
+        /* kotak ikon timbul */
+        .kpi-grid > .glass .rounded-lg {
+            transform: translateZ(18px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 4px 8px rgba(15, 23, 42, 0.2);
+        }
+        .kpi-grid > .glass > div:nth-child(2) { transform: translateZ(10px); }
+
+        .dark .kpi-grid > .glass {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                inset 0 -4px 0 rgba(0, 0, 0, 0.35),
+                0 2px 4px rgba(0, 0, 0, 0.4),
+                6px 10px 18px rgba(0, 0, 0, 0.5);
+        }
+        .dark .kpi-grid > .glass::before {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 45%);
+        }
+        .dark .kpi-grid > .glass:hover {
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -4px 0 rgba(0, 0, 0, 0.35),
+                0 4px 8px rgba(0, 0, 0, 0.45),
+                12px 20px 28px rgba(0, 0, 0, 0.6);
+        }
+        /* ===== Warna status kartu (BM dan Brondolan) ===== */
+        .kpi-grid > .glass.st-green  { background: linear-gradient(145deg, #22c55e 0%, #15803d 100%); border-color: rgba(255,255,255,.35); }
+        .kpi-grid > .glass.st-yellow { background: linear-gradient(145deg, #fde047 0%, #eab308 100%); border-color: rgba(255,255,255,.5); }
+        .kpi-grid > .glass.st-red    { background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%); border-color: rgba(255,255,255,.35); }
+        .kpi-grid > .glass.st-green *, .kpi-grid > .glass.st-red * { color: #ffffff !important; }
+        .kpi-grid > .glass.st-yellow * { color: #422006 !important; }
+        .kpi-grid > .glass.st-green .rounded-lg, .kpi-grid > .glass.st-red .rounded-lg { background: rgba(255,255,255,.25) !important; }
+        .kpi-grid > .glass.st-yellow .rounded-lg { background: rgba(66,32,6,.12) !important; }
+        @media (prefers-reduced-motion: reduce) {
+            .kpi-grid > .glass, .kpi-grid > .glass:hover { transition: none; transform: none; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+    <div class="min-h-screen">
+        <!-- Main Content Area -->
+        <main class="max-w-screen-2xl mx-auto p-3 lg:p-5 space-y-4 overflow-x-hidden">
+            <!-- Header Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-blue-700 dark:bg-blue-800 px-4 py-3 rounded-xl border border-blue-800 dark:border-blue-900 shadow-md shadow-blue-900/20">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        Dashboard Grading TBS Inti PT.BIM-PPS
+                    </h2>
+                    <p class="text-xs text-white">Monitoring kualitas TBS Internal Pabrik Borneo Indah Marjaya</p>
+                    <p id="activePeriodeText" class="text-xs font-semibold mt-0.5" style="color:#FFD700"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="themeToggle" type="button" title="Ganti tema" aria-label="Ganti tema terang/gelap" class="p-2 rounded-lg text-white bg-white/10 border border-white/60 hover:bg-white/20 transition">
+                        <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+                        <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+                    </button>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+                    <div class="relative" id="exportMenuWrap">
+                        <button id="btnExportMenu" type="button" title="Export / Download" aria-label="Menu export dan download" aria-haspopup="true" aria-expanded="false" class="p-2 rounded-lg text-white bg-white/10 border border-white/60 hover:bg-white/20 transition">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                        <div id="exportMenu" class="hidden absolute right-0 mt-2 w-52 z-50 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg py-1 text-xs text-slate-700 dark:text-slate-200">
+                            <button id="btnExportExcel" type="button" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-palm-600"></i> Export Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar (horizontal, ringkas, rata kanan) -->
+            <div class="glass -mb-1 px-2.5 py-1 rounded-lg border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Periode</span>
+                    <input type="date" id="startDate" class="text-[11px] px-1.5 py-0.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                    <span class="text-xs text-slate-400">s/d</span>
+                    <input type="date" id="endDate" class="text-[11px] px-1.5 py-0.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Afdeling</span>
+                    <select id="filterAfd" class="w-44 text-[11px] px-1.5 py-0.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-palm-500 outline-none">
+                        <option value="ALL">Semua Afdeling (BIM &amp; PPS)</option>
+                    </select>
+                </div>
+                <button id="btnResetFilter" type="button" class="text-[11px] py-0.5 px-2 border border-slate-300 dark:border-slate-600 rounded-md text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+                </button>
+            </div>
+
+            <!-- KPI Cards Grid -->
+            <div class="kpi-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <div class="glass px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider leading-tight">Total Tonase Sampel</span>
+                        <div class="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"><i data-lucide="scale" class="w-3.5 h-3.5"></i></div>
+                    </div>
+                    <div id="kpiTonase" class="text-lg font-bold leading-tight text-slate-900 dark:text-white">0 Ton</div>
+                    <div id="kpiTonaseKg" class="text-[10px] text-slate-500 mt-0.5">0 Kg</div>
+                </div>
+
+                <div class="glass px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider leading-tight">Total Janjang Sampel</span>
+                        <div class="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"><i data-lucide="layers" class="w-3.5 h-3.5"></i></div>
+                    </div>
+                    <div id="kpiJanjang" class="text-lg font-bold leading-tight text-slate-900 dark:text-white">0 JJG</div>
+                    <div id="kpiJanjangDetail" class="text-[10px] text-slate-500 mt-0.5">Man: 0 | KAB: 0</div>
+                </div>
+
+                <div id="cardBM" class="glass px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider leading-tight">Rata-Rata BM %</span>
+                        <div class="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i></div>
+                    </div>
+                    <div id="kpiMasakPct" class="text-lg font-bold leading-tight text-slate-900 dark:text-white">0%</div>
+                    <div id="kpiMasakJjg" class="text-[10px] text-slate-500 mt-0.5">0 JJG Mentah</div>
+                </div>
+
+                <div id="cardBrondolan" class="glass px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider leading-tight">Rata-Rata Brondolan %</span>
+                        <div class="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"><i data-lucide="circle-dot" class="w-3.5 h-3.5"></i></div>
+                    </div>
+                    <div id="kpiBrondolan" class="text-lg font-bold leading-tight text-slate-900 dark:text-white">0 Kg</div>
+                    <div id="kpiBrondolanPct" class="text-[10px] text-slate-500 mt-0.5">0% dari Tonase</div>
+                </div>
+
+                <div class="glass px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider leading-tight">Rata-Rata Sampah %</span>
+                        <div class="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></div>
+                    </div>
+                    <div id="kpiSampah" class="text-lg font-bold leading-tight text-slate-900 dark:text-white">0 Kg</div>
+                    <div id="kpiSampahPct" class="text-[10px] text-slate-500 mt-0.5">0% dari Tonase</div>
+                </div>
+
+                <div class="glass px-3 py-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider leading-tight">Rata-Rata BJR</span>
+                        <div class="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400"><i data-lucide="calculator" class="w-3.5 h-3.5"></i></div>
+                    </div>
+                    <div id="kpiBJR" class="text-lg font-bold leading-tight text-slate-900 dark:text-white">0.00 Kg/JJG</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">Berat Janjang Rata2</div>
+                </div>
+            </div>
+
+            <!-- Visual Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2 glass p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-palm-600"></i> Tren Brondolan Harian per Afdeling (% dari Tonase)
+                        </h3>
+                        <!-- Keterangan warna latar -->
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-red-300/60" style="background:rgba(239,68,68,0.35)"></span>Merah: 0 – 3%</span>
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-yellow-400/60" style="background:rgba(250,204,21,0.6)"></span>Kuning: 3,1 – 4,99%</span>
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-green-300/60" style="background:rgba(34,197,94,0.35)"></span>Hijau: ≥ 5%</span>
+                        </div>
+                    </div>
+                    <!-- Filter AFD khusus grafik tren -->
+                    <div class="flex flex-wrap items-center gap-1.5 mb-4">
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">Filter AFD (sinkron):</span>
+                        <div id="trendAfdFilter" class="flex flex-wrap items-center gap-1.5"></div>
+                    </div>
+                    <div class="h-72"><canvas id="chartTrend"></canvas></div>
+                </div>
+
+                <div class="glass p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-palm-600"></i> Rata-Rata % Brondolan per AFD
+                        </h3>
+                    </div>
+                    <!-- Keterangan warna batang -->
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 -mt-2 text-[11px] text-slate-600 dark:text-slate-300">
+                        <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#ef4444"></span>Merah: 0 – 3%</span>
+                        <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#facc15"></span>Kuning: 3,1 – 4,99%</span>
+                        <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#22c55e"></span>Hijau: ≥ 5%</span>
+                    </div>
+                    <!-- Area scroll naik-turun agar semua AFD tampil -->
+                    <div class="h-72 overflow-y-auto pr-1">
+                        <div id="proporsiInner" style="position:relative;height:100%"><canvas id="chartProporsi"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 glass p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-palm-600"></i> Tren % Buah Mentah Harian per Afdeling
+                        </h3>
+                        <!-- Keterangan warna latar -->
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-green-300/60" style="background:rgba(34,197,94,0.35)"></span>Hijau: 0 – 3%</span>
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-yellow-400/60" style="background:rgba(250,204,21,0.6)"></span>Kuning: 3,1 – 4,99%</span>
+                            <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-red-300/60" style="background:rgba(239,68,68,0.35)"></span>Merah: ≥ 5%</span>
+                        </div>
+                    </div>
+                    <div class="h-72"><canvas id="chartKualitas"></canvas></div>
+                </div>
+
+                <div class="glass p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-palm-600"></i> Rata-Rata % Buah Mentah per AFD
+                        </h3>
+                    </div>
+                    <!-- Keterangan warna batang -->
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 -mt-2 text-[11px] text-slate-600 dark:text-slate-300">
+                        <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#22c55e"></span>Hijau: 0 – 3%</span>
+                        <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#facc15"></span>Kuning: 3,1 – 4,99%</span>
+                        <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#ef4444"></span>Merah: ≥ 5%</span>
+                    </div>
+                    <!-- Area scroll naik-turun agar semua AFD tampil -->
+                    <div class="h-72 overflow-y-auto pr-1" id="transportScroll">
+                        <div id="transportInner" style="position:relative;height:100%"><canvas id="chartTransport"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Data Table Section -->
+            <div class="glass rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <i data-lucide="table" class="w-4 h-4 text-palm-600"></i> Detail Raw Data Grading TBS
+                        </h3>
+                        <p class="text-xs text-slate-500">Menampilkan rincian transaksi pengiriman dan pengujian penerimaan</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchInput" placeholder="Cari Chit, No Pol, Blok..." class="pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-palm-500 outline-none w-64">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tbl-scroll">
+                    <table class="w-full min-w-[960px] text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100/70 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('chit')">No. Chit <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('tanggal')">Tanggal <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('nopol')">No Pol / Unit <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 cursor-pointer hover:bg-slate-200/50" onclick="sortTable('afd')">Afdeling <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('tonase')">Tonase (Kg) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('jjgMan')">JJG Manual <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('jjgKab')">JJG KAB <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('buahMasak')">Buah Masak <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('brondolan')">Brondolan (Kg) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200/50" onclick="sortTable('sampah')">Sampah (Kg) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+                                <th class="py-3 px-4 text-right">BJR (Kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-200 dark:divide-slate-700/60 text-slate-700 dark:text-slate-300"></tbody>
+                    </table>
+                </div>
+
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                    <div id="tableInfo">0 data</div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pb-5 text-center text-[11px] text-slate-400">Copyright &copy; 2026 Supriyanto</footer>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // ===== Data sampel (Oktober 2026 PT BIM-PPS) =====
+        const sampleRawData = [
+            { chit: "CHT-1001", tanggal: "2026-10-01", nopol: "KT 8492 BC", afd: "BIM - AFD 1", tonase: 8450, jjgMan: 520, jjgKab: 515, buahMasak: 490, buahMentah: 25, brondolan: 420, sampah: 45 },
+            { chit: "CHT-1002", tanggal: "2026-10-01", nopol: "KT 8120 AB", afd: "BIM - AFD 2", tonase: 9200, jjgMan: 580, jjgKab: 580, buahMasak: 550, buahMentah: 30, brondolan: 510, sampah: 60 },
+            { chit: "CHT-1003", tanggal: "2026-10-02", nopol: "DA 9102 CD", afd: "PPS - AFD A", tonase: 7800, jjgMan: 460, jjgKab: 455, buahMasak: 440, buahMentah: 20, brondolan: 390, sampah: 30 },
+            { chit: "CHT-1004", tanggal: "2026-10-02", nopol: "KT 8492 BC", afd: "BIM - AFD 3", tonase: 10400, jjgMan: 640, jjgKab: 645, buahMasak: 610, buahMentah: 30, brondolan: 620, sampah: 70 },
+            { chit: "CHT-1005", tanggal: "2026-10-03", nopol: "KH 8221 FF", afd: "PPS - AFD B", tonase: 8900, jjgMan: 530, jjgKab: 530, buahMasak: 500, buahMentah: 30, brondolan: 450, sampah: 50 },
+            { chit: "CHT-1006", tanggal: "2026-10-04", nopol: "KT 8120 AB", afd: "BIM - AFD 1", tonase: 11200, jjgMan: 700, jjgKab: 690, buahMasak: 670, buahMentah: 30, brondolan: 700, sampah: 80 },
+            { chit: "CHT-1007", tanggal: "2026-10-05", nopol: "DA 9102 CD", afd: "PPS - AFD A", tonase: 8100, jjgMan: 490, jjgKab: 490, buahMasak: 470, buahMentah: 20, brondolan: 400, sampah: 40 },
+            { chit: "CHT-1008", tanggal: "2026-10-06", nopol: "KT 8990 GH", afd: "BIM - AFD 2", tonase: 9600, jjgMan: 600, jjgKab: 600, buahMasak: 575, buahMentah: 25, brondolan: 480, sampah: 55 },
+            { chit: "CHT-1009", tanggal: "2026-10-07", nopol: "KH 8221 FF", afd: "PPS - AFD C", tonase: 7500, jjgMan: 450, jjgKab: 440, buahMasak: 420, buahMentah: 30, brondolan: 350, sampah: 40 },
+            { chit: "CHT-1010", tanggal: "2026-10-08", nopol: "KT 8492 BC", afd: "BIM - AFD 3", tonase: 10100, jjgMan: 620, jjgKab: 625, buahMasak: 590, buahMentah: 30, brondolan: 580, sampah: 65 },
+            { chit: "CHT-1011", tanggal: "2026-10-10", nopol: "KT 8120 AB", afd: "BIM - AFD 1", tonase: 8800, jjgMan: 540, jjgKab: 540, buahMasak: 515, buahMentah: 25, brondolan: 430, sampah: 45 },
+            { chit: "CHT-1012", tanggal: "2026-10-12", nopol: "DA 9102 CD", afd: "PPS - AFD B", tonase: 9400, jjgMan: 570, jjgKab: 570, buahMasak: 540, buahMentah: 30, brondolan: 490, sampah: 50 },
+            { chit: "CHT-1013", tanggal: "2026-10-15", nopol: "KT 8990 GH", afd: "BIM - AFD 2", tonase: 10800, jjgMan: 660, jjgKab: 655, buahMasak: 630, buahMentah: 30, brondolan: 600, sampah: 70 },
+            { chit: "CHT-1014", tanggal: "2026-10-18", nopol: "KH 8221 FF", afd: "PPS - AFD A", tonase: 8300, jjgMan: 500, jjgKab: 505, buahMasak: 480, buahMentah: 20, brondolan: 410, sampah: 35 },
+            { chit: "CHT-1015", tanggal: "2026-10-20", nopol: "KT 8492 BC", afd: "BIM - AFD 3", tonase: 9900, jjgMan: 610, jjgKab: 610, buahMasak: 580, buahMentah: 30, brondolan: 530, sampah: 60 },
+            { chit: "CHT-1016", tanggal: "2026-10-22", nopol: "KT 8120 AB", afd: "BIM - AFD 1", tonase: 11500, jjgMan: 710, jjgKab: 715, buahMasak: 680, buahMentah: 30, brondolan: 720, sampah: 85 },
+            { chit: "CHT-1017", tanggal: "2026-10-25", nopol: "DA 9102 CD", afd: "PPS - AFD C", tonase: 7900, jjgMan: 480, jjgKab: 475, buahMasak: 450, buahMentah: 30, brondolan: 380, sampah: 40 },
+            { chit: "CHT-1018", tanggal: "2026-10-28", nopol: "KT 8990 GH", afd: "BIM - AFD 2", tonase: 10200, jjgMan: 630, jjgKab: 630, buahMasak: 600, buahMentah: 30, brondolan: 550, sampah: 60 },
+            { chit: "CHT-1019", tanggal: "2026-10-30", nopol: "KH 8221 FF", afd: "PPS - AFD B", tonase: 8600, jjgMan: 520, jjgKab: 520, buahMasak: 495, buahMentah: 25, brondolan: 440, sampah: 45 },
+            { chit: "CHT-1020", tanggal: "2026-10-31", nopol: "KT 8492 BC", afd: "BIM - AFD 1", tonase: 9100, jjgMan: 560, jjgKab: 555, buahMasak: 530, buahMentah: 30, brondolan: 470, sampah: 50 }
+        ];
+
+        // ===== State =====
+        let rawData = [...sampleRawData];
+        // Asal data: 'sample' (bawaan), 'shared' (data.json di repository), 'upload' (upload lokal)
+        let dataSource = { type: 'sample', name: '', updated: '' };
+        let filteredData = [...sampleRawData];
+        let currentPage = 1;
+        let pageSize = 25;
+        let sortColumn = 'tanggal';
+        let sortAsc = true;
+        let searchTerm = '';
+        let trendAfd = 'ALL'; // AFD yang tampil di grafik tren brondolan ('ALL' = semua)
+        let mentahAfd = 'ALL'; // AFD yang tampil di grafik tren % buah mentah ('ALL' = semua)
+
+        let chartTrendInstance = null;
+        let chartProporsiInstance = null;
+        let chartKualitasInstance = null;
+        let chartTransportInstance = null;
+
+        const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        // 12 warna dasar yang berjauhan; AFD ke-13 dst. memakai warna hasil generate (golden angle)
+        const PALETTE = ['#16a34a', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899', '#1e3a8a', '#84cc16', '#78350f', '#111827', '#a21caf'];
+        // Pola garis: AFD ke-13 dst. otomatis putus-putus / titik agar tetap beda walau warna mirip
+        const DASHES = [[], [7, 4], [2, 3], [10, 3, 2, 3]];
+
+        function hslToHex(h, s, l) {
+            s /= 100; l /= 100;
+            const k = n => (n + h / 30) % 12;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+            const x = v => Math.round(v * 255).toString(16).padStart(2, '0');
+            return `#${x(f(0))}${x(f(8))}${x(f(4))}`;
+        }
+
+        // ===== Helpers =====
+        const $ = (id) => document.getElementById(id);
+        const fmt = (n, d = 0) => Number(n).toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d });
+        const sum = (arr, key) => arr.reduce((a, r) => a + (Number(r[key]) || 0), 0);
+        const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const pad = (n) => String(n).padStart(2, '0');
+        const isDark = () => document.documentElement.classList.contains('dark');
+
+        // ===== Init =====
+        document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            setupThemeToggle();
+            setupFileUpload();
+            setupFilters();
+            setupTableControls();
+            setupExport();
+            setupTrendChips();
+            setupMentahChips();
+            setupChartDownload();
+
+            // Muat data bersama (data.json) jika ada; jika tidak, pakai data sampel
+            await loadSharedData();
+
+            populateDropdownFilters();
+            resetDateRange();
+            applyFilters();
+        });
+
+        // ===== Tombol download PNG di pojok kanan atas tiap grafik =====
+        function setupChartDownload() {
+            document.querySelectorAll('main canvas[id^="chart"]').forEach(canvas => {
+                const card = canvas.closest('.glass');
+                if (!card || card.querySelector('.btn-dl-png')) return;
+
+                card.classList.add('relative');
+                // beri ruang di header agar tidak tertimpa tombol
+                if (card.firstElementChild) card.firstElementChild.classList.add('pr-8');
+
+                const title = (card.querySelector('h3')?.textContent || 'grafik').replace(/\s+/g, ' ').trim();
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-dl-png absolute top-2 right-2 p-1.5 rounded-md text-slate-400 hover:text-palm-700 dark:hover:text-palm-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition';
+                btn.title = 'Download PNG';
+                btn.setAttribute('aria-label', 'Download grafik sebagai PNG');
+                btn.innerHTML = '<i data-lucide="download" class="w-3.5 h-3.5"></i>';
+                btn.addEventListener('click', () => downloadChartPNG(canvas, title));
+                card.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+
+        function downloadChartPNG(canvas, title) {
+            const dark = isDark();
+            const ratio = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+            const titleH = Math.round(58 * ratio);
+            const pad = Math.round(12 * ratio);
+
+            // teks periode dari filter tanggal (jika kosong, pakai rentang data yang tampil)
+            const fmtTgl = (s) => {
+                const [y, m, d] = s.split('-').map(Number);
+                return `${d} ${BULAN[m - 1]} ${y}`;
+            };
+            const dts = filteredData.map(r => r.tanggal).sort();
+            const s1 = $('startDate').value || dts[0];
+            const s2 = $('endDate').value || dts[dts.length - 1];
+            const periodeText = (s1 && s2) ? `Periode: ${fmtTgl(s1)} – ${fmtTgl(s2)}` : 'Periode: -';
+
+            const out = document.createElement('canvas');
+            out.width = canvas.width + pad * 2;
+            out.height = canvas.height + titleH + pad;
+            const ctx = out.getContext('2d');
+
+            // latar solid (canvas grafik aslinya transparan)
+            ctx.fillStyle = dark ? '#1e293b' : '#ffffff';
+            ctx.fillRect(0, 0, out.width, out.height);
+
+            // judul + periode
+            ctx.fillStyle = dark ? '#f1f5f9' : '#0f172a';
+            ctx.font = `700 ${Math.round(14 * ratio)}px Inter, sans-serif`;
+            ctx.textBaseline = 'middle';
+            ctx.fillText(title, pad, Math.round(22 * ratio) + pad / 2, out.width - pad * 2);
+
+            // periode tanggal di bawah judul
+            ctx.fillStyle = dark ? '#94a3b8' : '#64748b';
+            ctx.font = `500 ${Math.round(12 * ratio)}px Inter, sans-serif`;
+            ctx.fillText(periodeText, pad, Math.round(42 * ratio) + pad / 2, out.width - pad * 2);
+
+            ctx.drawImage(canvas, pad, titleH);
+
+            const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60);
+            const a = document.createElement('a');
+            a.href = out.toDataURL('image/png');
+            a.download = `${slug || 'grafik'}.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        // ===== Data bersama: data.json di repository =====
+        async function loadSharedData() {
+            try {
+                const res = await fetch('data.json?v=' + Date.now(), { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+                const arr = Array.isArray(json) ? json : json.data;
+                if (!Array.isArray(arr)) throw new Error('format tidak dikenali');
+
+                const rows = arr.map(r => ({
+                    chit: String(r.chit ?? ''),
+                    tanggal: String(r.tanggal ?? ''),
+                    nopol: String(r.nopol ?? 'UNKNOWN'),
+                    afd: String(r.afd ?? 'LAINNYA'),
+                    tonase: Number(r.tonase) || 0,
+                    jjgMan: Number(r.jjgMan) || 0,
+                    jjgKab: Number(r.jjgKab) || 0,
+                    buahMasak: Number(r.buahMasak) || 0,
+                    buahMentah: Number(r.buahMentah) || 0,
+                    brondolan: Number(r.brondolan) || 0,
+                    sampah: Number(r.sampah) || 0
+                })).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.tanggal));
+
+                if (!rows.length) throw new Error('data kosong');
+
+                rawData = rows;
+                const meta = (!Array.isArray(json) && json.meta) ? json.meta : {};
+                dataSource = { type: 'shared', name: meta.sumber || 'data.json', updated: meta.diperbarui || '' };
+            } catch (e) {
+                // data.json tidak ada / tidak bisa dibaca (mis. dibuka langsung dari komputer) -> pakai data sampel
+                dataSource = { type: 'sample', name: '', updated: '' };
+            }
+            updateDataInfo();
+        }
+
+        function updateDataInfo() {
+            const el = $('dataInfoText');
+            if (!el) return;
+            if (dataSource.type === 'shared') {
+                let t = `Sumber data: ${dataSource.name}`;
+                if (dataSource.updated) {
+                    const d = new Date(dataSource.updated);
+                    if (!isNaN(d)) {
+                        t += ' · diperbarui ' + d.toLocaleString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Makassar'
+                        }) + ' WITA';
+                    }
+                }
+                el.textContent = t;
+            } else if (dataSource.type === 'upload') {
+                el.textContent = `Data upload lokal: ${dataSource.name} (hanya tampil di browser ini)`;
+            } else {
+                el.textContent = 'Data sampel (data.json belum tersedia)';
+            }
+        }
+
+        function downloadDataJson() {
+            if (dataSource.type === 'sample') {
+                return alert('Upload file Excel master terlebih dahulu, lalu klik tombol ini untuk membuat data.json.');
+            }
+            if (!rawData.length) return alert('Tidak ada data untuk disimpan.');
+            const payload = {
+                meta: {
+                    sumber: dataSource.name,
+                    diperbarui: new Date().toISOString(),
+                    jumlahBaris: rawData.length
+                },
+                data: rawData
+            };
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        // ===== Theme =====
+        function setupThemeToggle() {
+            $('themeToggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                updateChartsTheme();
+            });
+        }
+
+        function updateChartsTheme() {
+            renderCharts();
+        }
+
+        // ===== Dropdown filters =====
+        function populateDropdownFilters() {
+            const afdSet = [...new Set(rawData.map(i => i.afd))].sort();
+
+            const afdSelect = $('filterAfd');
+
+            afdSelect.innerHTML = '<option value="ALL">Semua Afdeling (BIM & PPS)</option>';
+
+            afdSet.forEach(afd => {
+                const opt = document.createElement('option');
+                opt.value = afd;
+                opt.textContent = afd;
+                afdSelect.appendChild(opt);
+            });
+        }
+
+        function resetDateRange() {
+            const dates = rawData.map(r => r.tanggal).filter(Boolean).sort();
+            if (dates.length) {
+                $('startDate').value = dates[0];
+                $('endDate').value = dates[dates.length - 1];
+            } else {
+                $('startDate').value = '';
+                $('endDate').value = '';
+            }
+        }
+
+        // ===== File Upload (XLSX / CSV) =====
+        function setupFileUpload() {
+            const fileInput = $('fileInput');
+            const btnUpload = $('btnUploadFile');
+            if (btnUpload) btnUpload.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+                // reset agar file yang sama bisa dipilih ulang
+                e.target.value = '';
+            });
+
+            function handleFileSelect(file) {
+                window.pendingFileName = file.name;
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        // header:1 -> array of arrays, supaya header bisa dicari di baris mana pun
+                        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", raw: true });
+
+                        if (rows.length > 1) {
+                            parseExcelData(rows);
+                        } else {
+                            alert('File kosong atau format tidak sesuai.');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('Gagal membaca file Excel/CSV. Pastikan format file valid.');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        // Cari nilai kolom berdasarkan variasi nama header
+        function findValue(row, keywords) {
+            const keys = Object.keys(row);
+            for (const kw of keywords) {
+                const target = kw.toLowerCase().replace(/[\s._\-\/()]+/g, '');
+                for (const k of keys) {
+                    const cleanKey = String(k).toLowerCase().replace(/[\s._\-\/()]+/g, '');
+                    if (cleanKey.includes(target)) return row[k];
+                }
+            }
+            return null;
+        }
+
+        function parseNum(val) {
+            if (val === null || val === undefined || val === '') return 0;
+            if (typeof val === 'number') return val;
+            const cleaned = String(val).replace(/,/g, '.').replace(/[^0-9.\-]/g, '');
+            return parseFloat(cleaned) || 0;
+        }
+
+        function formatDateValue(v) {
+            if (!v) return '';
+            if (v instanceof Date && !isNaN(v)) {
+                // pakai komponen lokal (bukan toISOString) agar tanggal tidak mundur 1 hari di zona waktu WITA
+                return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+            }
+            if (typeof v === 'number') {
+                const d = XLSX.SSF.parse_date_code(v);
+                if (d) return `${d.y}-${pad(d.m)}-${pad(d.d)}`;
+            }
+            const s = String(v).trim();
+            let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+            if (m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+            m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+            if (m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+            return '';
+        }
+
+        function parseExcelData(matrix) {
+            // 1. Cari baris header (dalam 15 baris pertama)
+            let headerIdx = -1;
+            for (let i = 0; i < Math.min(matrix.length, 15); i++) {
+                const vals = matrix[i].map(v => String(v).toLowerCase());
+                const hits = ['chit', 'tanggal', 'tonase', 'afd', 'nopol', 'janjang', 'jjg']
+                    .filter(kw => vals.some(v => v.includes(kw))).length;
+                if (hits >= 2) { headerIdx = i; break; }
+            }
+            if (headerIdx === -1) headerIdx = 0;
+
+            const headers = matrix[headerIdx].map((h, i) => (String(h).trim() || `Kolom${i + 1}`));
+            const parsed = [];
+
+            for (let r = headerIdx + 1; r < matrix.length; r++) {
+                const arr = matrix[r];
+                if (!arr || arr.every(c => c === '' || c === null)) continue;
+
+                const row = {};
+                headers.forEach((h, i) => { row[h] = arr[i]; });
+
+                const chitVal = findValue(row, ['nochit', 'chit', 'nosurat', 'spb', 'ticket']);
+                const tanggalVal = findValue(row, ['tanggal', 'tgl', 'date']);
+
+                // Lewati baris kosong / total
+                if (!chitVal && !tanggalVal) continue;
+                if (String(chitVal).toLowerCase().includes('total') || String(tanggalVal).toLowerCase().includes('total')) continue;
+
+                const tgl = formatDateValue(tanggalVal);
+                if (!tgl) continue; // tanpa tanggal valid dianggap bukan baris data
+
+                parsed.push({
+                    chit: String(chitVal || `CHT-${1000 + r}`).trim(),
+                    tanggal: tgl,
+                    nopol: String(findValue(row, ['nopol/unit', 'nopol', 'nopolisi', 'unit', 'plat', 'truck']) || 'UNKNOWN').trim(),
+                    afd: String(findValue(row, ['afd/blok', 'afdeling', 'afd', 'blok', 'est']) || 'LAINNYA').trim(),
+                    tonase: parseNum(findValue(row, ['tonase', 'netto', 'berat'])),
+                    jjgMan: parseNum(findValue(row, ['jjgmanual', 'jjgman', 'janjangmanual'])),
+                    jjgKab: parseNum(findValue(row, ['jjgkab', 'janjangkab', 'kab', 'kerani'])),
+                    buahMasak: parseNum(findValue(row, ['bmasakjjg', 'masakjjg', 'buahmasak', 'masak'])),
+                    buahMentah: parseNum(findValue(row, ['bmentahjjg', 'mentahjjg', 'buahmentah', 'mentah'])),
+                    brondolan: parseNum(findValue(row, ['totalbrondolan', 'brondolankg', 'brondolan'])),
+                    sampah: parseNum(findValue(row, ['sampahkg', 'sampah']))
+                });
+            }
+
+            if (parsed.length === 0) {
+                alert('Tidak dapat memproses baris data. Pastikan ada kolom Tanggal, No Chit, Tonase, dll.');
+                return;
+            }
+
+            rawData = parsed;
+            dataSource = { type: 'upload', name: window.pendingFileName || 'file upload', updated: '' };
+            updateDataInfo();
+            populateDropdownFilters();
+            resetDateRange();
+            $('searchInput').value = '';
+            searchTerm = '';
+            currentPage = 1;
+            applyFilters();
+        }
+
+        // ===== Filters =====
+        function setupFilters() {
+            ['startDate', 'endDate', 'filterAfd'].forEach(id => {
+                $(id).addEventListener('change', () => { currentPage = 1; applyFilters(); });
+            });
+
+            $('btnResetFilter').addEventListener('click', () => {
+                $('filterAfd').value = 'ALL';
+                $('searchInput').value = '';
+                searchTerm = '';
+                resetDateRange();
+                currentPage = 1;
+                applyFilters();
+            });
+        }
+
+        function applyFilters() {
+            const start = $('startDate').value;
+            const end = $('endDate').value;
+            const afd = $('filterAfd').value;
+            const q = searchTerm.trim().toLowerCase();
+
+            filteredData = rawData.filter(r => {
+                if (start && r.tanggal < start) return false;
+                if (end && r.tanggal > end) return false;
+                if (afd !== 'ALL' && r.afd !== afd) return false;
+                if (q) {
+                    const hay = `${r.chit} ${r.nopol} ${r.afd} ${r.tanggal}`.toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                return true;
+            });
+
+            updatePeriodBadge();
+            renderKPIs();
+            renderCharts();
+            renderTable();
+        }
+
+        function updatePeriodBadge() {
+            const el = $('activePeriodeText');
+            const dates = rawData.map(r => r.tanggal).filter(Boolean).sort();
+            // periode mengikuti filter tanggal; jika kosong, pakai rentang seluruh data
+            const s1 = $('startDate').value || dates[0];
+            const s2 = $('endDate').value || dates[dates.length - 1];
+            if (!s1 || !s2) { el.textContent = 'Periode: -'; return; }
+            const f = (s) => { const [y, m, d] = s.split('-').map(Number); return `${d} ${BULAN[m - 1]} ${y}`; };
+            el.textContent = `Periode: ${f(s1)} – ${f(s2)}`;
+        }
+
+        // ===== KPIs =====
+        function setCardStatus(id, status) {
+            const el = $(id);
+            el.classList.remove('st-green', 'st-yellow', 'st-red');
+            if (status) el.classList.add('st-' + status);
+        }
+
+        function renderKPIs() {
+            const d = filteredData;
+            const tonase = sum(d, 'tonase');
+            const jjgMan = sum(d, 'jjgMan');
+            const jjgKab = sum(d, 'jjgKab');
+            const masak = sum(d, 'buahMasak');
+            const brond = sum(d, 'brondolan');
+            const sampah = sum(d, 'sampah');
+
+            $('kpiTonase').textContent = `${fmt(tonase / 1000, 2)} Ton`;
+            $('kpiTonaseKg').textContent = `${fmt(tonase)} Kg`;
+
+            $('kpiJanjang').textContent = `${fmt(jjgMan)} JJG`;
+            $('kpiJanjangDetail').textContent = `Man: ${fmt(jjgMan)} | KAB: ${fmt(jjgKab)}`;
+
+            // Rata-rata tertimbang buah mentah: total JJG mentah / total JJG Manual x 100
+            const mentah = sum(d, 'buahMentah');
+            const bmPct = jjgMan ? (mentah / jjgMan) * 100 : 0;
+            $('kpiMasakPct').textContent = `${fmt(bmPct, 2)}%`;
+            // BM: 0-3% hijau, 3,1 s/d 4,99% kuning, >=5% merah (nilai dibulatkan 2 desimal sesuai tampilan)
+            setCardStatus('cardBM', jjgMan ? (Math.round(bmPct * 100) / 100 <= 3 ? 'green' : Math.round(bmPct * 100) / 100 < 5 ? 'yellow' : 'red') : null);
+            $('kpiMasakJjg').textContent = `${fmt(mentah)} JJG Mentah`;
+
+            // Rata-rata tertimbang keseluruhan data terfilter: total brondolan / total tonase x 100
+            const brPct = tonase ? (brond / tonase) * 100 : 0;
+            $('kpiBrondolan').textContent = `${fmt(brPct, 2)}%`;
+            // Brondolan: 0-3% merah, 3,1 s/d 4,99% kuning, >=5% hijau
+            setCardStatus('cardBrondolan', tonase ? (Math.round(brPct * 100) / 100 <= 3 ? 'red' : Math.round(brPct * 100) / 100 < 5 ? 'yellow' : 'green') : null);
+            $('kpiBrondolanPct').textContent = `Total ${fmt(brond)} Kg`;
+
+            // Rata-rata tertimbang keseluruhan data terfilter: total sampah / total tonase x 100
+            $('kpiSampah').textContent = `${fmt(tonase ? (sampah / tonase) * 100 : 0, 2)}%`;
+            $('kpiSampahPct').textContent = `Total ${fmt(sampah)} Kg`;
+
+            $('kpiBJR').textContent = `${fmt(jjgMan ? tonase / jjgMan : 0, 2)} Kg/JJG`;
+        }
+
+        // ===== Charts =====
+        function groupBy(arr, keyFn) {
+            const map = new Map();
+            arr.forEach(r => {
+                const k = keyFn(r);
+                if (!map.has(k)) map.set(k, []);
+                map.get(k).push(r);
+            });
+            return map;
+        }
+
+        function destroyChart(inst) { if (inst) inst.destroy(); return null; }
+
+        // Latar belakang berwarna (opasitas rendah) pada grafik brondolan:
+        // 0-3% merah, 3,1-4,99% kuning, >=5% hijau
+        // Brondolan: makin tinggi makin baik (merah -> kuning -> hijau)
+        const BANDS_BRONDOLAN = [
+            { from: -Infinity, to: 3, color: 'rgba(239,68,68,0.16)' },
+            { from: 3, to: 5, color: 'rgba(250,204,21,0.30)' },
+            { from: 5, to: Infinity, color: 'rgba(34,197,94,0.16)' }
+        ];
+        // Buah mentah: makin rendah makin baik (hijau -> kuning -> merah)
+        const BANDS_MENTAH = [
+            { from: -Infinity, to: 3, color: 'rgba(34,197,94,0.16)' },
+            { from: 3, to: 5, color: 'rgba(250,204,21,0.30)' },
+            { from: 5, to: Infinity, color: 'rgba(239,68,68,0.16)' }
+        ];
+
+        function bandPlugin(bands = BANDS_BRONDOLAN) {
+            return {
+                id: 'brondolanBands',
+                beforeDatasetsDraw(chart) {
+                    const { ctx, chartArea, scales } = chart;
+                    const y = scales.y;
+                    if (!chartArea || !y) return;
+                    ctx.save();
+                    bands.forEach(b => {
+                        const top = b.to === Infinity ? chartArea.top : Math.max(chartArea.top, y.getPixelForValue(b.to));
+                        const bottom = b.from === -Infinity ? chartArea.bottom : Math.min(chartArea.bottom, y.getPixelForValue(b.from));
+                        if (bottom > top) {
+                            ctx.fillStyle = b.color;
+                            ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, bottom - top);
+                        }
+                    });
+                    // garis batas putus-putus di 3% dan 5%
+                    ctx.setLineDash([5, 4]);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(100,116,139,0.55)';
+                    [3, 5].forEach(v => {
+                        const py = y.getPixelForValue(v);
+                        if (py >= chartArea.top && py <= chartArea.bottom) {
+                            ctx.beginPath();
+                            ctx.moveTo(chartArea.left, py);
+                            ctx.lineTo(chartArea.right, py);
+                            ctx.stroke();
+                        }
+                    });
+                    ctx.restore();
+                }
+            };
+        }
+
+        // Filter AFD disinkronkan: memilih AFD di salah satu grafik langsung berlaku untuk kedua grafik
+        function setChartAfd(afd) {
+            trendAfd = afd;
+            mentahAfd = afd;
+            renderTrendChips();
+            renderMentahChips();
+            renderTrendChart();
+            renderMentahChart();
+        }
+
+        // ===== Grafik tren % buah mentah per AFD =====
+        function renderMentahChips() {
+            const box = $('mentahAfdFilter');
+            const afds = [...new Set(filteredData.map(r => r.afd))].sort();
+            if (mentahAfd !== 'ALL' && !afds.includes(mentahAfd)) mentahAfd = 'ALL';
+            if (!box) return; // filter khusus grafik ini sudah dihapus; AFD mengikuti filter grafik brondolan
+
+            const base = 'px-2.5 py-1 rounded-full text-[11px] font-medium border transition';
+            const on = 'bg-palm-700 text-white border-palm-700';
+            const off = 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600';
+
+            let html = `<button type="button" data-afd="__ALL__" class="${base} ${mentahAfd === 'ALL' ? on : off}">Semua</button>`;
+            afds.forEach(a => {
+                html += `<button type="button" data-afd="${escapeHtml(a)}" class="${base} flex items-center gap-1.5 ${mentahAfd === a ? on : off}">
+                    <span class="inline-block w-2 h-2 rounded-full ring-1 ring-white/70" style="background:${afdColor(a)}"></span>${escapeHtml(a)}</button>`;
+            });
+            box.innerHTML = html;
+        }
+
+        function setupMentahChips() {
+            const box = $('mentahAfdFilter');
+            if (!box) return;
+            box.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-afd]');
+                if (!btn) return;
+                setChartAfd(btn.dataset.afd === '__ALL__' ? 'ALL' : btn.dataset.afd);
+            });
+        }
+
+        function renderMentahChart() {
+            const dark = isDark();
+            const textColor = dark ? '#cbd5e1' : '#475569';
+            const gridColor = dark ? 'rgba(148,163,184,0.15)' : 'rgba(100,116,139,0.15)';
+
+            const dates = [...new Set(filteredData.map(r => r.tanggal))].sort();
+            const afds = [...new Set(filteredData.map(r => r.afd))].sort()
+                .filter(a => mentahAfd === 'ALL' || a === mentahAfd);
+
+            const datasets = afds.map(a => {
+                const byDate = groupBy(filteredData.filter(r => r.afd === a), r => r.tanggal);
+                const color = afdColor(a);
+                return {
+                    label: a,
+                    // % buah mentah = JJG buah mentah / total JJG (manual) x 100
+                    data: dates.map(dt => {
+                        if (!byDate.has(dt)) return null;
+                        const jjg = sum(byDate.get(dt), 'jjgMan');
+                        return jjg ? (sum(byDate.get(dt), 'buahMentah') / jjg) * 100 : null;
+                    }),
+                    borderColor: color,
+                    backgroundColor: color + '26',
+                    pointBackgroundColor: color,
+                    fill: false,
+                    borderDash: afdDash(a),
+                    borderWidth: 2.5,
+                    tension: 0.3,
+                    spanGaps: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                };
+            });
+
+            // Rentang sumbu Y minimal 1,5% - 6,5% agar zona hijau, kuning, dan merah selalu terlihat
+            const vals = datasets.flatMap(d => d.data).filter(v => v !== null && !isNaN(v));
+            const dMin = vals.length ? Math.min(...vals) : 3;
+            const dMax = vals.length ? Math.max(...vals) : 5;
+            const yMin = Math.max(0, Math.min(1.5, Math.floor(dMin * 2) / 2 - 0.5));
+            const yMax = Math.max(6.5, Math.ceil(dMax * 2) / 2 + 0.5);
+
+            chartKualitasInstance = destroyChart(chartKualitasInstance);
+            chartKualitasInstance = new Chart($('chartKualitas'), {
+                type: 'line',
+                data: {
+                    labels: dates.map(d => d.slice(8, 10) + '/' + d.slice(5, 7)),
+                    datasets
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: textColor, boxWidth: 10 } },
+                        tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y, 2)}%` } }
+                    },
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: { min: yMin, max: yMax, grid: { color: gridColor }, ticks: { color: textColor, callback: (v) => fmt(v, 1) + '%' }, title: { display: true, text: 'Buah Mentah (% dari Janjang)', color: textColor } }
+                    }
+                },
+                plugins: [bandPlugin(BANDS_MENTAH)]
+            });
+        }
+
+        // ===== Filter AFD untuk grafik tren brondolan =====
+        function allAfdSorted() {
+            return [...new Set(rawData.map(r => r.afd))].sort();
+        }
+
+        function afdColor(afd) {
+            const idx = Math.max(0, allAfdSorted().indexOf(afd));
+            if (idx < PALETTE.length) return PALETTE[idx];
+            const n = idx - PALETTE.length;
+            return hslToHex((n * 137.508 + 20) % 360, 70 - (n % 3) * 8, 48 + (n % 2) * 8);
+        }
+
+        function afdDash(afd) {
+            const idx = Math.max(0, allAfdSorted().indexOf(afd));
+            return DASHES[Math.floor(idx / PALETTE.length) % DASHES.length];
+        }
+
+        function renderTrendChips() {
+            const box = $('trendAfdFilter');
+            const afds = [...new Set(filteredData.map(r => r.afd))].sort();
+            // kembali ke "Semua" jika AFD terpilih sudah tidak ada di data terfilter
+            if (trendAfd !== 'ALL' && !afds.includes(trendAfd)) trendAfd = 'ALL';
+
+            const allActive = trendAfd === 'ALL';
+            const base = 'px-2.5 py-1 rounded-full text-[11px] font-medium border transition';
+            let html = `<button type="button" data-afd="__ALL__" class="${base} ${allActive
+                ? 'bg-palm-700 text-white border-palm-700'
+                : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'}">Semua</button>`;
+
+            afds.forEach(a => {
+                const active = trendAfd === a;
+                const color = afdColor(a);
+                html += `<button type="button" data-afd="${escapeHtml(a)}" class="${base} flex items-center gap-1.5 ${active
+                    ? 'bg-palm-700 text-white border-palm-700'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'}">
+                    <span class="inline-block w-2 h-2 rounded-full ring-1 ring-white/70" style="background:${color}"></span>${escapeHtml(a)}</button>`;
+            });
+            box.innerHTML = html;
+        }
+
+        function setupTrendChips() {
+            $('trendAfdFilter').addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-afd]');
+                if (!btn) return;
+                const afd = btn.dataset.afd;
+                // klik AFD = tampilkan hanya AFD itu; klik "Semua" = tampilkan semua
+                setChartAfd(afd === '__ALL__' ? 'ALL' : afd);
+            });
+        }
+
+        function renderTrendChart() {
+            const dark = isDark();
+            const textColor = dark ? '#cbd5e1' : '#475569';
+            const gridColor = dark ? 'rgba(148,163,184,0.15)' : 'rgba(100,116,139,0.15)';
+
+            const dates = [...new Set(filteredData.map(r => r.tanggal))].sort();
+            const afds = [...new Set(filteredData.map(r => r.afd))].sort().filter(a => trendAfd === 'ALL' || a === trendAfd);
+
+            const datasets = afds.map(a => {
+                const rows = filteredData.filter(r => r.afd === a);
+                const byDate = groupBy(rows, r => r.tanggal);
+                const color = afdColor(a);
+                return {
+                    label: a,
+                    // % brondolan = total brondolan (Kg) / total tonase (Kg) x 100
+                    data: dates.map(dt => {
+                        if (!byDate.has(dt)) return null;
+                        const ton = sum(byDate.get(dt), 'tonase');
+                        return ton ? (sum(byDate.get(dt), 'brondolan') / ton) * 100 : null;
+                    }),
+                    borderColor: color,
+                    backgroundColor: color + '26', // area transparan (dipakai saat 1 AFD dipilih)
+                    pointBackgroundColor: color,
+                    fill: false,
+                    borderDash: afdDash(a),
+                    borderWidth: 2.5,
+                    tension: 0.3,
+                    spanGaps: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                };
+            });
+
+            // Rentang sumbu Y minimal 2,5% - 6,5% agar zona merah, kuning, dan hijau selalu terlihat
+            const vals = datasets.flatMap(d => d.data).filter(v => v !== null && !isNaN(v));
+            const dMin = vals.length ? Math.min(...vals) : 3;
+            const dMax = vals.length ? Math.max(...vals) : 5;
+            const yMin = Math.max(0, Math.min(2.5, Math.floor(dMin * 2) / 2 - 0.5));
+            const yMax = Math.max(6.5, Math.ceil(dMax * 2) / 2 + 0.5);
+
+            chartTrendInstance = destroyChart(chartTrendInstance);
+            chartTrendInstance = new Chart($('chartTrend'), {
+                type: 'line',
+                data: {
+                    labels: dates.map(d => d.slice(8, 10) + '/' + d.slice(5, 7)),
+                    datasets
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: textColor, boxWidth: 10 } },
+                        tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y, 2)}%` } }
+                    },
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: { min: yMin, max: yMax, grid: { color: gridColor }, ticks: { color: textColor, callback: (v) => fmt(v, 1) + '%' }, title: { display: true, text: 'Brondolan (% dari Tonase)', color: textColor } }
+                    }
+                },
+                plugins: [bandPlugin()]
+            });
+        }
+
+        function renderCharts() {
+            const dark = isDark();
+            const textColor = dark ? '#cbd5e1' : '#475569';
+            const gridColor = dark ? 'rgba(148,163,184,0.15)' : 'rgba(100,116,139,0.15)';
+
+            Chart.defaults.color = textColor;
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.font.size = 11;
+
+            const baseScales = (extra = {}) => ({
+                x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                y: { grid: { color: gridColor }, ticks: { color: textColor } },
+                ...extra
+            });
+
+            // --- Tren brondolan per afdeling (dengan filter AFD sendiri) ---
+            renderTrendChips();
+            renderTrendChart();
+
+            // --- Rata-rata % brondolan per AFD selama periode terpilih ---
+            // rata-rata tertimbang = total brondolan (Kg) / total tonase (Kg) x 100; urut dari tertinggi (hijau) di atas
+            const brondolanRank = [...groupBy(filteredData, r => r.afd).entries()]
+                .map(([afd, rows]) => {
+                    const ton = sum(rows, 'tonase');
+                    return { afd, val: ton ? (sum(rows, 'brondolan') / ton) * 100 : 0 };
+                })
+                .sort((a, b) => b.val - a.val);
+
+            const brondolanColor = (v) => { const r = Math.round(v * 100) / 100; return r <= 3 ? '#ef4444' : (r < 5 ? '#facc15' : '#22c55e'); };
+            const brondolanVals = brondolanRank.map(d => d.val);
+
+            // Tinggi area grafik menyesuaikan jumlah AFD (30px per batang); jika melebihi kotak, muncul scroll
+            const brondolanHeight = brondolanRank.length * 30 + 40;
+            $('proporsiInner').style.height = brondolanHeight > 288 ? brondolanHeight + 'px' : '100%';
+
+            chartProporsiInstance = destroyChart(chartProporsiInstance);
+            chartProporsiInstance = new Chart($('chartProporsi'), {
+                type: 'bar',
+                data: {
+                    labels: brondolanRank.map(d => d.afd),
+                    datasets: [{ label: '% Brondolan', data: brondolanVals, backgroundColor: brondolanVals.map(brondolanColor), borderRadius: 4 }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    layout: { padding: { right: 44 } },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${fmt(c.parsed.x, 2)}%` } } },
+                    scales: {
+                        x: { beginAtZero: true, suggestedMax: 7, grid: { color: gridColor }, ticks: { color: textColor, callback: (v) => v + '%' } },
+                        y: { grid: { display: false }, ticks: { color: textColor, autoSkip: false } }
+                    }
+                },
+                plugins: [{
+                    id: 'barValuesBrondolan',
+                    afterDatasetsDraw(chart) {
+                        const ctx = chart.ctx;
+                        ctx.save();
+                        ctx.fillStyle = textColor;
+                        ctx.font = '600 11px Inter, sans-serif';
+                        ctx.textBaseline = 'middle';
+                        chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                            ctx.fillText(fmt(brondolanVals[i], 2) + '%', bar.x + 6, bar.y);
+                        });
+                        ctx.restore();
+                    }
+                }]
+            });
+
+            // --- Tren % buah mentah per afdeling (dengan filter AFD sendiri) ---
+            renderMentahChips();
+            renderMentahChart();
+
+            // --- Rata-rata % buah mentah per AFD selama periode terpilih ---
+            // rata-rata tertimbang = total JJG mentah / total JJG x 100; urut dari terendah (hijau) di atas
+            const mentahAfdRank = [...groupBy(filteredData, r => r.afd).entries()]
+                .map(([afd, rows]) => {
+                    const jjg = sum(rows, 'jjgMan');
+                    return { afd, val: jjg ? (sum(rows, 'buahMentah') / jjg) * 100 : 0 };
+                })
+                .sort((a, b) => a.val - b.val);
+
+            const mentahColor = (v) => { const r = Math.round(v * 100) / 100; return r <= 3 ? '#22c55e' : (r < 5 ? '#facc15' : '#ef4444'); };
+            const rankVals = mentahAfdRank.map(d => d.val);
+
+            // Tinggi area grafik menyesuaikan jumlah AFD (30px per batang); jika melebihi kotak, muncul scroll
+            const neededHeight = mentahAfdRank.length * 30 + 40;
+            $('transportInner').style.height = neededHeight > 288 ? neededHeight + 'px' : '100%';
+
+            chartTransportInstance = destroyChart(chartTransportInstance);
+            chartTransportInstance = new Chart($('chartTransport'), {
+                type: 'bar',
+                data: {
+                    labels: mentahAfdRank.map(d => d.afd),
+                    datasets: [{ label: '% Buah Mentah', data: rankVals, backgroundColor: rankVals.map(mentahColor), borderRadius: 4 }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    layout: { padding: { right: 44 } },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${fmt(c.parsed.x, 2)}%` } } },
+                    scales: {
+                        x: { beginAtZero: true, suggestedMax: 6, grid: { color: gridColor }, ticks: { color: textColor, callback: (v) => v + '%' } },
+                        y: { grid: { display: false }, ticks: { color: textColor, autoSkip: false } }
+                    }
+                },
+                plugins: [{
+                    id: 'barValues',
+                    afterDatasetsDraw(chart) {
+                        const ctx = chart.ctx;
+                        ctx.save();
+                        ctx.fillStyle = textColor;
+                        ctx.font = '600 11px Inter, sans-serif';
+                        ctx.textBaseline = 'middle';
+                        chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                            ctx.fillText(fmt(rankVals[i], 2) + '%', bar.x + 6, bar.y);
+                        });
+                        ctx.restore();
+                    }
+                }]
+            });
+        }
+
+        // ===== Table =====
+        function setupTableControls() {
+            $('searchInput').addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                currentPage = 1;
+                applyFilters();
+            });
+        }
+
+        function sortTable(col) {
+            if (sortColumn === col) sortAsc = !sortAsc;
+            else { sortColumn = col; sortAsc = true; }
+            renderTable();
+        }
+
+        function renderTable() {
+            const sorted = [...filteredData].sort((a, b) => {
+                const va = a[sortColumn], vb = b[sortColumn];
+                let cmp;
+                if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+                else cmp = String(va).localeCompare(String(vb), 'id', { numeric: true });
+                return sortAsc ? cmp : -cmp;
+            });
+
+            const total = sorted.length;
+            const pageRows = sorted;
+
+            const tbody = $('tableBody');
+            if (!pageRows.length) {
+                tbody.innerHTML = '<tr><td colspan="11" class="py-8 text-center text-slate-400">Tidak ada data yang cocok dengan filter.</td></tr>';
+            } else {
+                tbody.innerHTML = pageRows.map(r => {
+                    const bjr = r.jjgMan ? r.tonase / r.jjgMan : 0;
+                    return `<tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        <td class="py-2.5 px-4 font-medium">${escapeHtml(r.chit)}</td>
+                        <td class="py-2.5 px-4">${escapeHtml(r.tanggal)}</td>
+                        <td class="py-2.5 px-4">${escapeHtml(r.nopol)}</td>
+                        <td class="py-2.5 px-4">${escapeHtml(r.afd)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(r.tonase)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(r.jjgMan)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(r.jjgKab)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(r.buahMasak)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(r.brondolan)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(r.sampah)}</td>
+                        <td class="py-2.5 px-4 text-right">${fmt(bjr, 2)}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            $('tableInfo').textContent = total > 10
+                ? `Total ${total} data · 10 baris terlihat, geser ke bawah atau ke samping untuk melihat selengkapnya`
+                : `Total ${total} data`;
+        }
+
+        // ===== Export =====
+        function buildExportRows() {
+            return filteredData.map(r => ({
+                'No Chit': r.chit,
+                'Tanggal': r.tanggal,
+                'No Pol / Unit': r.nopol,
+                'Afdeling': r.afd,
+                'Tonase (Kg)': r.tonase,
+                'JJG Manual': r.jjgMan,
+                'JJG KAB': r.jjgKab,
+                'Buah Masak (JJG)': r.buahMasak,
+                'Buah Mentah (JJG)': r.buahMentah,
+                'Brondolan (Kg)': r.brondolan,
+                'Sampah (Kg)': r.sampah,
+                'BJR (Kg/JJG)': r.jjgMan ? Number((r.tonase / r.jjgMan).toFixed(2)) : 0
+            }));
+        }
+
+        function setupExport() {
+
+            // Dropdown menu export
+            const menu = $('exportMenu');
+            const menuBtn = $('btnExportMenu');
+            const closeMenu = () => { menu.classList.add('hidden'); menuBtn.setAttribute('aria-expanded', 'false'); };
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = menu.classList.toggle('hidden') === false;
+                menuBtn.setAttribute('aria-expanded', String(open));
+            });
+            menu.addEventListener('click', (e) => { if (e.target.closest('button')) closeMenu(); });
+            document.addEventListener('click', (e) => { if (!$('exportMenuWrap').contains(e.target)) closeMenu(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+            $('btnExportExcel').addEventListener('click', () => {
+                if (!filteredData.length) return alert('Tidak ada data untuk diexport.');
+                const ws = XLSX.utils.json_to_sheet(buildExportRows());
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Grading TBS');
+                XLSX.writeFile(wb, 'Grading_TBS_Inti_BIM-PPS.xlsx');
+            });
+        }
+    </script>
+</body>
+</html>
